@@ -20,6 +20,7 @@ def reposition_centroids():
         total[assignments[i]] += 1
     centroids = np.array([accumulated[i] / total[i] for i in range(k)])
 
+
 def reassign_images():
     solved = True
     for i, image in enumerate(clustering_data):
@@ -38,17 +39,63 @@ def cluster():
     solved = False
     while not solved:
         solved = reassign_images()
+        if solved:
+            break
         reposition_centroids()
-        print(epoch); epoch += 1
+        print("iteration", epoch); epoch += 1
+    print("clustering completed")
 
 
 def test():
-    pass
+    print("testing...", end="")
+    incorrect = 0
+    for image, label in zip(testing_data.images, testing_data.labels):
+        min_dist = np.inf
+        predicted = 0
+        for i, centroid in enumerate(centroids):
+            dist = euclidian_distance(image, centroid)
+            if dist < min_dist:
+                min_dist = dist
+                predicted = i
+        predicted = assigned_class[predicted]
+        if predicted != label:
+            incorrect += 1
+    print('done' + '\n' + "accuracy:", 100 * (len(data.test.images) - incorrect) / len(data.test.images))
 
 
-epoch = 0
-k = 10  # number of centroids
-centroids = np.random.permutation(clustering_data)[0:k]  # fixing k random centroids
-assignments = np.array([0 for i in range(len(clustering_data))])  # initial random assignment
-cluster()
-test()
+def assign_classes():
+    global assigned_class
+    result = [[0 for j in range(k)] for i in range(10)]
+    for index, image in enumerate(clustering_data):
+        d = np.inf
+        pred = 0
+        for i, centroid in enumerate(centroids):
+            curr_dist = euclidian_distance(image, centroid)
+            if curr_dist < d:
+                d = curr_dist
+                pred = i
+        result[data.train.labels[index]][pred] += 1
+
+    # assign each centroid a class
+    for i in range(k):
+        # solve for centroid i
+        max_index = 0
+        max_val = -np.inf
+        for j in range(10):
+            if result[j][i] > max_val:
+                max_val = result[j][i]
+                max_index = j
+        assigned_class[i] = max_index
+
+    print(assigned_class)
+
+
+if __name__ == '__main__':
+    epoch = 0
+    k = 50  # number of centroids
+    centroids = np.random.permutation(clustering_data)[0:k]  # fixing k random centroids
+    assignments = np.array([0 for i in range(len(clustering_data))])  # initial random assignment
+    assigned_class = [0 for i in range(k)]
+    cluster()
+    assign_classes()
+    test()
